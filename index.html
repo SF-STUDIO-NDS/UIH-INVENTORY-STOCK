@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UIH Network Stock — Juniper</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#F5F7FA; --surface:#fff; --surface2:#F0F4F8;
+  --navy:#1B263B; --navy2:#243447; --navy3:#2E4057;
+  --teal:#00B3A4; --teal2:#00968A; --teal-bg:rgba(0,179,164,.08);
+  --border:#DDE3EC; --text:#1B263B; --text2:#4A5568; --dim:#8A9BB0;
+  --green:#16A34A; --green-bg:#F0FDF4; --green-bd:#BBF7D0;
+  --orange:#EA580C; --orange-bg:#FFF7ED; --orange-bd:#FED7AA;
+  --red:#DC2626; --red-bg:#FEF2F2; --red-bd:#FECACA;
+  --sh:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.05);
+  --sh-md:0 4px 16px rgba(27,38,59,.10);
+  --sh-lg:0 12px 40px rgba(27,38,59,.16);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);min-height:100vh}
+
+/* HEADER */
+header{background:var(--navy);height:62px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:34px;height:34px;border-radius:7px;background:var(--teal);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;letter-spacing:-1px}
+.logo-name{font-size:16px;font-weight:800;color:#fff;letter-spacing:.5px}
+.logo-sub{font-size:9px;color:rgba(255,255,255,.38);letter-spacing:2px;font-family:'JetBrains Mono',monospace;margin-top:1px}
+.hdr-r{display:flex;align-items:center;gap:10px}
+.btn-imp{display:flex;align-items:center;gap:6px;padding:6px 13px;border-radius:6px;background:var(--teal);border:none;color:#fff;font-family:'Inter',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:background .2s}
+.btn-imp:hover{background:var(--teal2)}
+.hdr-ts{font-size:10px;color:rgba(255,255,255,.4);font-family:'JetBrains Mono',monospace}
+.live{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--teal);font-family:'JetBrains Mono',monospace}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px var(--teal);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* MAIN */
+main{padding:22px 28px;display:flex;flex-direction:column;gap:18px;max-width:1680px;margin:0 auto}
+
+/* STATS */
+.stat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;box-shadow:var(--sh);position:relative;overflow:hidden}
+.sc::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--teal)}
+.sc.warn::before{background:var(--orange)} .sc.danger::before{background:var(--red)}
+.sc-label{font-size:9px;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;font-weight:600;margin-bottom:5px}
+.sc-val{font-size:26px;font-weight:800;color:var(--navy);font-family:'JetBrains Mono',monospace;line-height:1}
+.sc.warn .sc-val{color:var(--orange)} .sc.danger .sc-val{color:var(--red)}
+.sc-desc{font-size:10px;color:var(--dim);margin-top:3px}
+
+/* SECTION HDR */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between}
+.sec-title{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.sec-title::after{content:'';width:32px;height:1px;background:var(--border)}
+.legend{display:flex;gap:14px}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);font-weight:500}
+.leg-d{width:9px;height:9px;border-radius:50%}
+.leg-d.g{background:var(--green)} .leg-d.o{background:var(--orange)} .leg-d.r{background:var(--red)} .leg-d.x{background:#CBD5E1}
+
+/* GRID */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:1350px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:960px){.grid{grid-template-columns:repeat(2,1fr)}.stat-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.stat-row{grid-template-columns:repeat(2,1fr)}}
+
+/* DEVICE CARD */
+.dc{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh);transition:all .2s;cursor:pointer;display:flex;flex-direction:column}
+.dc:hover{border-color:var(--teal);box-shadow:var(--sh-md);transform:translateY(-2px)}
+
+/* IMAGE PANEL */
+.di{background:var(--navy);padding:18px 14px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;border-bottom:2px solid var(--teal);min-height:155px}
+.d-series{position:absolute;top:8px;left:8px;font-size:9px;font-weight:700;letter-spacing:1.5px;padding:2px 7px;border-radius:3px;font-family:'JetBrains Mono',monospace}
+.s-mx{background:rgba(0,179,164,.2);color:#4DDDD6;border:1px solid rgba(0,179,164,.4)}
+.s-ptx{background:rgba(139,92,246,.2);color:#C4B5FD;border:1px solid rgba(139,92,246,.4)}
+.s-ex{background:rgba(34,197,94,.2);color:#86EFAC;border:1px solid rgba(34,197,94,.4)}
+.s-hw{background:rgba(239,68,68,.2);color:#FCA5A5;border:1px solid rgba(239,68,68,.4)}
+.d-stbadge{position:absolute;top:8px;right:8px;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;font-family:'JetBrains Mono',monospace}
+.st-ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.st-low{background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange-bd)}
+.st-out{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
+svg.dsvg{width:100%;max-width:250px;height:auto}
+.d-model{font-size:14px;font-weight:800;color:#fff;letter-spacing:1px}
+.d-sub{font-size:9px;color:rgba(255,255,255,.38);font-family:'JetBrains Mono',monospace;text-align:center}
+
+/* BODY */
+.db{padding:12px;flex:1;display:flex;flex-direction:column;gap:9px}
+.d-meta-row{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:5px}
+.d-match-label{font-size:10px;color:var(--dim);font-weight:600;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.lchips{display:flex;flex-wrap:wrap;gap:3px}
+.lchip{padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;background:var(--teal-bg);color:var(--teal2);border:1px solid rgba(0,179,164,.2);display:flex;gap:3px}
+.lchip b{color:var(--navy);font-weight:800}
+
+/* PARTS */
+.plist{display:flex;flex-direction:column;gap:2px}
+.prow{display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:5px;background:var(--surface2);border:1px solid transparent;transition:border-color .15s}
+.prow:hover{border-color:var(--teal)}
+.pdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.pdot.g{background:var(--green)} .pdot.o{background:var(--orange)} .pdot.r{background:var(--red)} .pdot.x{background:#CBD5E1}
+.pinfo{flex:1;min-width:0}
+.pname{font-size:10px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pmat{font-size:9px;color:var(--dim);font-family:'JetBrains Mono',monospace}
+.pqty{font-size:12px;font-weight:800;font-family:'JetBrains Mono',monospace;min-width:28px;text-align:right}
+.pqty.g{color:var(--green)} .pqty.o{color:var(--orange)} .pqty.r{color:var(--red)} .pqty.x{color:#CBD5E1}
+.pnf{font-size:9px;color:#CBD5E1;font-family:'JetBrains Mono',monospace;font-style:italic}
+
+.see-btn{margin-top:4px;padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:var(--teal2);cursor:pointer;width:100%;transition:all .15s}
+.see-btn:hover{background:var(--teal-bg);border-color:var(--teal)}
+
+/* MODAL */
+.mbg{display:none;position:fixed;inset:0;background:rgba(27,38,59,.5);backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;padding:20px}
+.mbg.open{display:flex}
+.modal{background:#fff;border-radius:14px;max-width:740px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:var(--sh-lg)}
+.mhd{padding:16px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:1}
+.mtitle{font-size:15px;font-weight:800;color:var(--navy)}
+.mclose{background:none;border:none;font-size:20px;color:var(--dim);cursor:pointer;padding:2px 6px;border-radius:4px}
+.mclose:hover{background:var(--surface2);color:var(--navy)}
+.mbody{padding:18px 22px;display:flex;flex-direction:column;gap:14px}
+.msub{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
+.mloc-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.mloc{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 11px}
+.mloc.tot{border-color:var(--teal);background:var(--teal-bg)}
+.mloc-n{font-size:9px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:2px}
+.mloc-q{font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--navy)}
+.mloc.tot .mloc-q{color:var(--teal2)}
+.mparts{display:flex;flex-direction:column;gap:5px}
+.mp{display:grid;grid-template-columns:10px 1fr 70px 40px;gap:9px;align-items:center;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:7px}
+.mp-dot{width:10px;height:10px;border-radius:50%}
+.mp-dot.g{background:var(--green)} .mp-dot.o{background:var(--orange)} .mp-dot.r{background:var(--red)} .mp-dot.x{background:#CBD5E1}
+.mp-d{font-size:11px;font-weight:600;color:var(--text)}
+.mp-m{font-size:9px;color:var(--dim);font-family:'JetBrains Mono',monospace;margin-top:1px}
+.mp-bar{height:5px;background:var(--border);border-radius:3px}
+.mp-fill{height:100%;border-radius:3px}
+.mp-fill.g{background:var(--green)} .mp-fill.o{background:var(--orange)} .mp-fill.r{background:var(--red)} .mp-fill.x{background:#CBD5E1}
+.mp-q{font-size:15px;font-weight:800;font-family:'JetBrains Mono',monospace;text-align:right}
+.mp-q.g{color:var(--green)} .mp-q.o{color:var(--orange)} .mp-q.r{color:var(--red)} .mp-q.x{color:#CBD5E1}
+
+/* IMPORT MODAL */
+.imbg{display:none;position:fixed;inset:0;background:rgba(27,38,59,.5);backdrop-filter:blur(4px);z-index:600;align-items:center;justify-content:center;padding:20px}
+.imbg.open{display:flex}
+.imbox{background:#fff;border-radius:14px;max-width:500px;width:100%;box-shadow:var(--sh-lg);overflow:hidden}
+.imhd{background:var(--navy);padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
+.imtitle{font-size:14px;font-weight:800;color:#fff}
+.imclose{background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer}
+.imclose:hover{color:#fff}
+.imbody{padding:18px;display:flex;flex-direction:column;gap:12px}
+.drop-z{border:2px dashed var(--border);border-radius:10px;padding:30px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface2)}
+.drop-z:hover,.drop-z.drag{border-color:var(--teal);background:var(--teal-bg)}
+.drop-icon{font-size:30px;margin-bottom:7px}
+.drop-t{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:3px}
+.drop-s{font-size:11px;color:var(--dim)}
+.imst{padding:9px 13px;border-radius:7px;font-size:12px;font-weight:600;display:none}
+.imst.ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.imst.err{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
+.imst.load{background:var(--teal-bg);color:var(--teal2);border:1px solid rgba(0,179,164,.3)}
+.imprev{display:none;font-size:11px}
+.imprev table{width:100%;border-collapse:collapse}
+.imprev th{text-align:left;padding:4px 7px;font-size:9px;letter-spacing:1px;color:var(--dim);border-bottom:1px solid var(--border);text-transform:uppercase}
+.imprev td{padding:4px 7px;border-bottom:1px solid var(--surface2)}
+.imact{display:flex;gap:8px;justify-content:flex-end}
+.btn-cancel{padding:7px 15px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
+.btn-cancel:hover{border-color:var(--teal);color:var(--teal)}
+.btn-ok{padding:7px 16px;border-radius:6px;border:none;background:var(--teal);color:#fff;font-family:'Inter',sans-serif;font-size:12px;font-weight:700;cursor:pointer;display:none}
+.btn-ok:hover{background:var(--teal2)}
+.how{background:var(--surface2);border-radius:7px;padding:11px 13px;font-size:11px;color:var(--text2)}
+.how b{display:block;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+.how ol{padding-left:15px;display:flex;flex-direction:column;gap:3px}
+.how code{background:var(--teal-bg);color:var(--teal2);padding:1px 4px;border-radius:3px;font-size:10px}
+
+.sec-divider{
+  display:flex;align-items:center;gap:14px;padding:6px 0;
+}
+.sec-divider-line{flex:1;height:1px;background:var(--border)}
+.sec-divider-label{
+  font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;
+  padding:5px 14px;border-radius:20px;white-space:nowrap;
+}
+.sec-divider-label.juniper{background:rgba(0,179,164,.1);color:var(--teal2);border:1px solid rgba(0,179,164,.25)}
+.sec-divider-label.huawei{background:rgba(239,68,68,.08);color:#EF4444;border:1px solid rgba(239,68,68,.2)}position:fixed;bottom:22px;right:22px;background:var(--navy);color:#fff;padding:11px 17px;border-radius:8px;font-size:13px;font-weight:600;z-index:999;box-shadow:var(--sh-lg);border-left:3px solid var(--teal);transition:opacity .4s}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-icon">JN</div>
+    <div>
+      <div class="logo-name">UIH INVENTORY STOCK</div>
+      <div class="logo-sub">JUNIPER NETWORK INVENTORY</div>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <div class="hdr-ts" id="hdr-ts">Data: 2026-02-25</div>
+    <button class="btn-imp" onclick="openImp()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Import Excel
+    </button>
+    <div class="live"><span class="pulse"></span>LIVE</div>
+    <div class="hdr-ts" id="clock"></div>
+  </div>
+</header>
+
+<input type="file" id="xls-in" accept=".xlsx,.xls" style="display:none" onchange="handleFile(event)">
+
+<main>
+  <div class="stat-row">
+    <div class="sc"><div class="sc-label">Device Types</div><div class="sc-val" id="s1">—</div><div class="sc-desc">ประเภทอุปกรณ์</div></div>
+    <div class="sc"><div class="sc-label">Part Numbers</div><div class="sc-val" id="s2">—</div><div class="sc-desc">รายการทั้งหมด</div></div>
+    <div class="sc"><div class="sc-label">Matched Parts</div><div class="sc-val" id="s3">—</div><div class="sc-desc">Part พบใน DB</div></div>
+    <div class="sc warn"><div class="sc-label">Low Stock ≤5</div><div class="sc-val" id="s4">—</div><div class="sc-desc">รายการ</div></div>
+    <div class="sc danger"><div class="sc-label">Out of Stock</div><div class="sc-val" id="s5">—</div><div class="sc-desc">รายการ</div></div>
+  </div>
+
+  <div class="sec-hdr">
+    <div class="sec-title">Juniper Equipment Stock Dashboard</div>
+    <div class="legend">
+      <div class="leg"><div class="leg-d g"></div>In Stock</div>
+      <div class="leg"><div class="leg-d o"></div>Low (≤5)</div>
+      <div class="leg"><div class="leg-d r"></div>Out of Stock</div>
+      <div class="leg"><div class="leg-d x"></div>ไม่พบใน DB</div>
+    </div>
+  </div>
+
+  <!-- JUNIPER DIVIDER -->
+  <div class="sec-divider">
+    <div class="sec-divider-line"></div>
+    <div class="sec-divider-label juniper">⬡ JUNIPER NETWORKS</div>
+    <div class="sec-divider-line"></div>
+  </div>
+
+  <div class="grid" id="dev-grid"></div>
+
+  <!-- HUAWEI DIVIDER -->
+  <div class="sec-divider">
+    <div class="sec-divider-line"></div>
+    <div class="sec-divider-label huawei">⬢ HUAWEI TECHNOLOGIES</div>
+    <div class="sec-divider-line"></div>
+  </div>
+
+  <div class="grid" id="hw-grid"></div>
+</main>
+
+<!-- DEVICE DETAIL MODAL -->
+<div class="mbg" id="dev-modal" onclick="closeDM(event)">
+  <div class="modal">
+    <div class="mhd"><div class="mtitle" id="dm-t">—</div><button class="mclose" onclick="closeDMd()">✕</button></div>
+    <div class="mbody" id="dm-b"></div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="imbg" id="imp-modal">
+  <div class="imbox">
+    <div class="imhd"><div class="imtitle">📥 Import Stock จาก Excel</div><button class="imclose" onclick="closeImp()">✕</button></div>
+    <div class="imbody">
+      <div class="how">
+        <b>รูปแบบไฟล์ที่รองรับ</b>
+        <ol>
+          <li>ไฟล์ <code>.xlsx</code> Export จากระบบ SAP</li>
+          <li>Sheet ชื่อ <code>SumStock</code> — header row ที่ 3</li>
+          <li>คอลัมน์: <code>Material</code> | <code>Description</code> | สาขา... | <code>Total</code></li>
+        </ol>
+      </div>
+      <div class="drop-z" id="drop-z" onclick="document.getElementById('xls-in').click()"
+        ondragover="event.preventDefault();this.classList.add('drag')"
+        ondragleave="this.classList.remove('drag')"
+        ondrop="handleDrop(event)">
+        <div class="drop-icon">📂</div>
+        <div class="drop-t">คลิกเลือกไฟล์ หรือ Drag & Drop</div>
+        <div class="drop-s">.xlsx / .xls</div>
+      </div>
+      <div class="imst" id="im-st"></div>
+      <div class="imprev" id="im-prev"></div>
+      <div class="imact">
+        <button class="btn-cancel" onclick="closeImp()">ยกเลิก</button>
+        <button class="btn-ok" id="btn-ok" onclick="applyImp()">✓ อัปเดต Dashboard</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ DATA ═══════════════════════════════════════════════════════════════
+const DEVICES=[
+{id:'mx104',model:'MX104',series:'MX',sc:'s-mx',desc:'Universal Edge Router • 2x10GE + 2 MIC Slots',
+ items:[
+  {m:'UCHAS-MX104-S',    d:'MX104 Chassis Spare',             t:61, mx:100,f:1,loc:{NAWA:27,BKK:13,AYA:1,RBI:1,PLK:1,CMI:1,SNI:1,HYI:3,PKT:1,KKN:1,NMA:2,UBN:2,UDN:2,CBI:4,RYG:1}},
+  {m:'UMX104-40G-DCBNDL',d:'MX104 Bundle 2x10GE 2 MIC',      t:1,  mx:5,  f:1,loc:{NAWA:1}},
+  {m:'URE-S-MX104-WW-S', d:'Routing Engine MX104 4GB Spare',  t:138,mx:200,f:1,loc:{NAWA:107,BKK:8,AYA:1,RBI:1,PLK:1,CMI:1,SNI:2,HYI:4,PKT:1,KKN:1,NMA:1,UBN:1,UDN:4,CBI:3,RYG:2}},
+  {m:'UPWR-MX104-DC-S',  d:'MX104 DC Power Supply Spare',     t:146,mx:200,f:1,loc:{NAWA:119,BKK:9,RBI:1,PLK:1,CMI:1,SNI:1,HYI:3,PKT:2,KKN:1,NMA:1,UBN:1,UDN:3,CBI:2,RYG:1}},
+  {m:'UMIC-3D-20GE-SFP', d:'MX 20x1G MIC (Req.Optics)',       t:38, mx:60, f:1,loc:{NAWA:32,BKK:4,CBI:1,RYG:1}},
+  {m:'UMIC-3D-2XGE-XFP', d:'2x10G MIC for MX (Req.Optics)',   t:40, mx:60, f:1,loc:{NAWA:3,BKK:10,AYA:2,RBI:1,PLK:1,CMI:1,SNI:2,HYI:3,PKT:3,KKN:2,NMA:1,UBN:1,UDN:2,CBI:5,RYG:3}},
+]},
+{id:'mx204',model:'MX204',series:'MX',sc:'s-mx',desc:'Fixed Port Edge Router • 4x100GE + 8x10GE',
+ items:[
+  {m:'UJX-MX204-HWBASEDC', d:'MX204 Fixed DC System',             t:1,  mx:10, f:1,loc:{CBI:1}},
+  {m:'UJX-JNP-QSFP4X10GE',d:'QSFP+ 4x10GBASE-LR',               t:19, mx:40, f:1,loc:{NAWA:16,BKK:3}},
+  {m:'UJX-QSFP100G-LR4-C',d:'100GBASE-LR4 QSFP28 100G 10KM',    t:2,  mx:20, f:1,loc:{PKT:2}},
+  {m:'UJX-LMZ-FPR14S',     d:'ODF Breakport Patch Panel 4-Snap', t:21, mx:40, f:1,loc:{NAWA:21}},
+  {m:'UJX-MZ-F1AP06DLC',   d:'6 LC Duplex Adapter ODF Breakport',t:115,mx:200,f:1,loc:{NAWA:113,BKK:1,CBI:1}},
+  {m:'UJX-LMZITFALSY08BL', d:'LC Duplex Fanout Cable 8-Core',    t:15, mx:30, f:1,loc:{NAWA:13,BKK:1,CBI:1}},
+]},
+{id:'mx480',model:'MX480',series:'MX',sc:'s-mx',desc:'High-Performance Edge Router • 6-Slot Chassis',
+ items:[
+  {m:'UMX480BAES-DC',     d:'MX480 DC Base Unit 6-Slot',      t:6, mx:10,f:1,loc:{NAWA:6}},
+  {m:'UPWR-MX480-DC-S',   d:'MX480 1600W DC Power Entry',     t:27,mx:40,f:1,loc:{NAWA:27}},
+  {m:'USS-FANTRAY-MX480', d:'Fan Tray MX480',                  t:0, mx:10,f:0,loc:{}},
+  {m:'URE-S-1800X4-32G',  d:'Routing Engine 1800X4 32G',      t:0, mx:10,f:0,loc:{}},
+  {m:'USCB-MX960',        d:'Switch Control Board MX960',      t:12,mx:20,f:1,loc:{NAWA:12}},
+  {m:'UDPCE-R-20GE-2XGE', d:'Coarse Queue Combo DPC L2+L3',   t:8, mx:20,f:1,loc:{NAWA:7,BKK:1}},
+  {m:'UMX-MPC1E-3D-Q-R-B',d:'MPC1E-3D-Q Line Card Bundle',   t:1, mx:10,f:1,loc:{BKK:1}},
+  {m:'UMX-MPC1-3D-Q-R-B', d:'MX Q Line Card Full Scale',      t:4, mx:10,f:1,loc:{NAWA:1,BKK:1,CBI:1,RYG:1}},
+]},
+{id:'mx960',model:'MX960',series:'MX',sc:'s-mx',desc:'Core Edge Router • 11-Slot High-Density',
+ items:[
+  {m:'UMX4960-PREMIUM-AC',d:'MX960-PREMIUM-AC',               t:1, mx:5, f:1,loc:{NAWA:1}},
+  {m:'USCB-MX960',        d:'Switch Control Board MX960',      t:12,mx:20,f:1,loc:{NAWA:12}},
+  {m:'USS-FANTRAY-MX960', d:'Fan Tray MX960 HC',               t:1, mx:5, f:1,loc:{NAWA:1}},
+  {m:'UMX-FPC2',          d:'FPC Type2 MX960/MX480/MX240',    t:2, mx:10,f:1,loc:{NAWA:2}},
+  {m:'UMX-MPC2-3D',       d:'MPC2 32xL3 VPN Line Card',       t:1, mx:5, f:1,loc:{NAWA:1}},
+  {m:'UMX-MPC1-3D-Q-R-B', d:'MX Q Line Card Full Scale',      t:4, mx:10,f:1,loc:{NAWA:1,BKK:1,CBI:1,RYG:1}},
+]},
+{id:'ptx3000',model:'PTX3000',series:'PTX',sc:'s-ptx',desc:'Packet Transport Router • High-Scale Core',
+ items:[
+  {m:'UJU-PTX3000BASE',   d:'Base Chassis PTX3000',            t:2, mx:5, f:1,loc:{BKK:2}},
+  {m:'UJU-CB-SFF-PTX-BB', d:'PTX3000 SFF Control Board',      t:2, mx:5, f:1,loc:{BKK:2}},
+  {m:'UJU-FAN-SFF-PTX-B', d:'PTX3000 Small Form Factor Fan',  t:4, mx:10,f:1,loc:{BKK:4}},
+  {m:'UJU-RE-DUO-C2616G', d:'PTX3000 Dual Core 2.6GHz RE',    t:2, mx:5, f:1,loc:{BKK:2}},
+  {m:'UJU-PSM-SFF-PTXDC', d:'PTX3000 DC Power Supply',        t:10,mx:20,f:1,loc:{BKK:10}},
+  {m:'UJU-SIB3-SFF-PTX',  d:'PTX3000 3rd Gen Fabric Module',  t:17,mx:30,f:1,loc:{BKK:17}},
+  {m:'UJU-FPC3-SFF-PTX',  d:'PTX3000 3rd Gen 1T FPC3',        t:2, mx:5, f:1,loc:{BKK:2}},
+  {m:'UJU-P1-PTX-24-10G', d:'PTX3000 24x10G LAN/WAN PIC',    t:2, mx:5, f:1,loc:{BKK:2}},
+  {m:'UJU-P2-100GE-OTN',  d:'PTX3000 4x100GE OTN',            t:1, mx:5, f:1,loc:{BKK:1}},
+  {m:'UJU-CFP2-100G-LR4', d:'100GBASE-LR4 CFP2 Pluggable',   t:1, mx:5, f:1,loc:{BKK:1}},
+  {m:'UJU-CFP2-DCO-T',    d:'CFP2 Digital Coherent Optic',    t:2, mx:5, f:1,loc:{BKK:2}},
+]},
+{id:'ptx10001',model:'PTX10001',series:'PTX',sc:'s-ptx',desc:'Fixed High-Capacity Router • 36x QSFP56-DD',
+ items:[
+  {m:'UJX-MAM1Q00A',      d:'40G to 10G Adaptor',              t:6, mx:20,f:1,loc:{NAWA:6}},
+  {m:'UJX-PTX10001-DC',   d:'PTX10001 36x QSFP56-DD/QSFP28', t:1, mx:5, f:1,loc:{NAWA:1}},
+  {m:'UJX-QDD-4C-ZRM',    d:'QDD-400G-ZR-M Coherent Optic',   t:1, mx:5, f:1,loc:{NAWA:1}},
+  {m:'UJX-QSFP100G-LR4-C',d:'100GBASE-LR4 QSFP28 100G 10KM', t:2, mx:10,f:1,loc:{PKT:2}},
+]},
+{id:'ex2300',model:'EX2300',series:'EX',sc:'s-ex',desc:'Access Switch • 24P Gigabit + 4x10GE Uplink',
+ items:[
+  {m:'UEX2300-24T',      d:'EX2300 24P 10/100/1000 + 4x10GE', t:490, mx:600, f:1,loc:{NAWA:394,BKK:13,AYA:5,RBI:3,PLK:11,CMI:6,SNI:9,HYI:7,PKT:6,KKN:5,NMA:8,UBN:7,UDN:6,CBI:5,RYG:5}},
+  {m:'UCABLE-AC-EX2300', d:'Cable AC Power For EX2300',         t:350, mx:500, f:1,loc:{NAWA:265,BKK:15,AYA:4,RBI:3,PLK:7,CMI:5,SNI:8,HYI:7,PKT:6,KKN:4,NMA:7,UBN:5,UDN:5,CBI:5,RYG:4}},
+  {m:'UPANS-EX2300',     d:'Rack Mount Kit For EX2300',         t:1235,mx:1500,f:1,loc:{NAWA:1063,BKK:26,AYA:10,RBI:6,PLK:14,CMI:10,SNI:16,HYI:14,PKT:14,KKN:8,NMA:14,UBN:10,UDN:10,CBI:10,RYG:10}},
+  {m:'UEX2300-24P',      d:'EX2300 24P PoE Version',            t:0,   mx:50,  f:0,loc:{}},
+]},
+];
+
+// ═══ HUAWEI DEVICES ══════════════════════════════════════════════════════
+const DEVICES_HW=[
+{id:'osn3500',model:'OSN3500',series:'SDH',sc:'s-hw',desc:'SDH Transmission • OptiX OSN 3500',
+ items:[
+  {m:'USS-03029593',  d:'OSN3500 Dual Channel DCU Board',     t:16,mx:30,f:1,loc:{NAWA:16}},
+  {m:'USS-N3PSXCSA',  d:'Super Cross-Connect Board OSN3500',  t:6, mx:15,f:1,loc:{NAWA:6}},
+  {m:'USS-31092464',  d:'OSN7500/3500/3500T/2500 Accessories',t:5, mx:10,f:1,loc:{NAWA:5}},
+]},
+{id:'osn7500',model:'OSN7500',series:'SDH',sc:'s-hw',desc:'SDH Transmission • OptiX OSN 7500',
+ items:[
+  {m:'USS-02237905',  d:'Power Supply Cabinet / Cable Set',   t:4, mx:10,f:1,loc:{NAWA:4}},
+  {m:'USS-03020TNR',  d:'OSN7500 Power Unit 1x2',             t:3, mx:10,f:1,loc:{NAWA:3}},
+  {m:'USS-T1SUBRACK01',d:'Type III Subrack OSN7500',          t:4, mx:10,f:1,loc:{NAWA:4}},
+  {m:'USS-31092464',  d:'OSN7500/3500/2500 Accessories',      t:5, mx:10,f:1,loc:{NAWA:5}},
+  {m:'USS-NB9RACK05', d:'N63E Rack 2200x600x300 Type III',    t:5, mx:10,f:1,loc:{NAWA:5}},
+]},
+{id:'osn1500',model:'OSN1500',series:'SDH',sc:'s-hw',desc:'SDH Transmission • OptiX OSN 1500',
+ items:[
+  {m:'USS-AIRFILTER01',d:'OSN1500 Air Filter Module',         t:49,mx:60,f:1,loc:{NAWA:49}},
+  {m:'USS-04044438',   d:'Alarm Cable 20M OSN1500',           t:1, mx:5, f:1,loc:{NAWA:1}},
+]},
+{id:'osn9800',model:'OSN9800',series:'DWDM',sc:'s-hw',desc:'DWDM Platform • OptiX OSN 9800',
+ items:[
+  {m:'USS-TMF1PIU01',    d:'Power Interface Board M12',       t:4, mx:10,f:1,loc:{NAWA:4}},
+  {m:'USS-TNG1EFI01',    d:'EMI Filter Interface Board M24',  t:2, mx:5, f:1,loc:{NAWA:2}},
+  {m:'USS-TNG1FAN01',    d:'SP FAN OSN9800 M24',              t:4, mx:10,f:1,loc:{NAWA:4}},
+  {m:'USS-TNG1FAN05',    d:'SP FAN OSN9800 M12',              t:2, mx:5, f:1,loc:{NAWA:2}},
+  {m:'USS-TNG2PIU01',    d:'Power Interface Board M24',       t:8, mx:15,f:1,loc:{NAWA:8}},
+  {m:'USS-TNGK1AFB01',   d:'Assembly SubRack OSN9800 M24',    t:2, mx:5, f:1,loc:{NAWA:2}},
+  {m:'USS-TNGK1AFB01-SP',d:'SubRack M24 Separate',           t:2, mx:5, f:1,loc:{NAWA:2}},
+  {m:'USS-TNSK1AFB01',   d:'Assembly SubRack OSN9800 U16',    t:1, mx:5, f:1,loc:{NAWA:1}},
+  {m:'USS-TNSK1AFB01SP', d:'SubRack U16 Separate',            t:5, mx:10,f:1,loc:{NAWA:5}},
+  {m:'USS-TNS1EFI01',    d:'EMI Filter Interface Board U16',  t:5, mx:10,f:1,loc:{BKK:1,CMI:1,HYI:1,PKT:1,UDN:1}},
+  {m:'USS-TNS1FAN',      d:'SP FAN OSN9800 U16',              t:10,mx:15,f:1,loc:{BKK:1,RBI:1,PLK:1,CMI:1,SNI:1,HYI:1,PKT:1,NMA:1,UDN:1,CBI:1}},
+  {m:'USS-TNS1PIU01',    d:'Power Interface Board U16',       t:20,mx:30,f:1,loc:{NAWA:6,BKK:1,AYA:2,RBI:1,PLK:2,CMI:2,SNI:1,HYI:1,PKT:1,NMA:1,UDN:1,CBI:1}},
+  {m:'USS-TN18EFIB',     d:'EMI Filter Interface Board UPS',  t:10,mx:15,f:1,loc:{BKK:1,RBI:1,PLK:1,CMI:2,SNI:1,HYI:1,NMA:1,UDN:1,CBI:1}},
+  {m:'USS-TN18FAN',      d:'SP FAN OSN9800 UPS',              t:11,mx:15,f:1,loc:{BKK:1,RBI:1,PLK:1,CMI:1,SNI:1,HYI:2,PKT:1,NMA:1,UDN:1,CBI:1}},
+  {m:'USS-TN18PIU',      d:'Power Interface Board UPS',       t:24,mx:30,f:1,loc:{NAWA:5,BKK:1,AYA:2,RBI:1,PLK:2,CMI:3,SNI:1,HYI:1,PKT:1,KKN:2,NMA:1,UDN:3,CBI:1}},
+  {m:'USS-TNVK2AFB01',   d:'Assembly Subrack OSN9800 UPS',    t:1, mx:5, f:1,loc:{NAWA:1}},
+  {m:'UHW-TMFK1AFB07-SP',d:'Assembly SubRack OSN9800 M12 Sep',t:2, mx:5, f:1,loc:{NAWA:2}},
+]},
+{id:'osn1800',model:'OSN1800',series:'DWDM',sc:'s-hw',desc:'DWDM Platform • OptiX OSN 1800',
+ items:[
+  {m:'USS-21121810',     d:'OSN1800 II Line Frame',            t:7, mx:15,f:1,loc:{NAWA:7}},
+  {m:'USS-TNF1MR401',    d:'OSN1800 4-Channel Optical MR',     t:16,mx:25,f:1,loc:{NAWA:16}},
+  {m:'USS-TNF1FAN01',    d:'Fan for Subrack OSN1800',          t:1, mx:5, f:1,loc:{NAWA:1}},
+  {m:'UHW32-TNFK-CASE-V',d:'Packet Enhanced Assembly Chassis', t:1, mx:5, f:1,loc:{NAWA:1}},
+  {m:'UHW33-AST401-II',  d:'OSN1800II TNF1AST401',             t:2, mx:5, f:1,loc:{NAWA:2}},
+  {m:'UHW33-EMR410-II',  d:'OSN1800II TNF1EMR410',             t:2, mx:5, f:1,loc:{NAWA:2}},
+  {m:'UHW33-F1DFIU03-II',d:'OSN1800II TNF1DFIU03',             t:2, mx:5, f:1,loc:{BKK:1,UDN:1}},
+  {m:'UHW33-F3SCC03-II', d:'OSN1800II TNF3SCC03',              t:2, mx:5, f:1,loc:{BKK:1,UDN:1}},
+  {m:'UHW33-LTXT65-II',  d:'OSN1800II TNF2LTXT65',             t:2, mx:5, f:1,loc:{BKK:1,UDN:1}},
+  {m:'UHW33-OBU01-II',   d:'OSN1800II TNF2OBU01',              t:2, mx:5, f:1,loc:{NAWA:2}},
+  {m:'UHW33-TMB1OLP-II', d:'OSN1800II TMB1OLP',                t:4, mx:10,f:1,loc:{NAWA:2,BKK:1,UDN:1}},
+]},
+{id:'dc908',model:'DC908',series:'DWDM',sc:'s-hw',desc:'DWDM Fiber Distribution Frame',
+ items:[
+  {m:'UHW-TMNKFFRAME01',d:'DC908 Fiber Distribution Part',    t:8, mx:15,f:1,loc:{NAWA:8}},
+]},
+];
+
+// ═══ SVG DEVICE DRAWINGS ════════════════════════════════════════════════
+const T='#00B3A4',N='#243447',D='#2E4057',DK='#1B263B';
+function SVG(id){
+  const svgs={
+mx104:`<svg class="dsvg" viewBox="0 0 250 75" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="8" width="238" height="57" rx="4" fill="${DK}" stroke="${T}" stroke-width="1.5"/>
+  <rect x="10" y="12" width="230" height="49" rx="2" fill="${N}"/>
+  <rect x="1" y="13" width="7" height="47" rx="2" fill="${D}"/>
+  <rect x="242" y="13" width="7" height="47" rx="2" fill="${D}"/>
+  <circle cx="20" cy="21" r="3" fill="#22C55E"/><circle cx="30" cy="21" r="3" fill="${T}"/><circle cx="40" cy="21" r="3" fill="${D}"/>
+  <text x="52" y="25" font-size="7.5" fill="${T}" font-family="monospace" font-weight="bold">JUNIPER MX104</text>
+  <!-- MIC0 -->
+  <rect x="14" y="30" width="50" height="22" rx="3" fill="${D}" stroke="${T}" stroke-width="1"/>
+  <text x="39" y="45" font-size="6.5" fill="${T}" font-family="monospace" text-anchor="middle">MIC-0</text>
+  <!-- MIC1 -->
+  <rect x="68" y="30" width="50" height="22" rx="3" fill="${D}" stroke="${T}" stroke-width="1"/>
+  <text x="93" y="45" font-size="6.5" fill="${T}" font-family="monospace" text-anchor="middle">MIC-1</text>
+  <!-- 10GE -->
+  <rect x="126" y="32" width="13" height="9" rx="1" fill="${T}" opacity=".8"/>
+  <rect x="142" y="32" width="13" height="9" rx="1" fill="${T}" opacity=".5"/>
+  <text x="141" y="50" font-size="5.5" fill="${D}" font-family="monospace" text-anchor="middle">10GE</text>
+  <!-- MGMT -->
+  <rect x="162" y="32" width="12" height="9" rx="1" fill="${D}"/>
+  <text x="168" y="50" font-size="5.5" fill="${D}" font-family="monospace" text-anchor="middle">MGMT</text>
+  <!-- PSU -->
+  <rect x="182" y="28" width="22" height="26" rx="2" fill="${D}" stroke="${T}" stroke-width=".7"/>
+  <text x="193" y="41" font-size="6" fill="${T}" font-family="monospace" text-anchor="middle">PSU</text>
+  <text x="193" y="49" font-size="5" fill="${T}" font-family="monospace" text-anchor="middle">DC</text>
+  <!-- FAN -->
+  <rect x="208" y="28" width="22" height="26" rx="2" fill="${DK}" stroke="${D}" stroke-width=".6"/>
+  <line x1="210" y1="34" x2="228" y2="34" stroke="${T}" stroke-width=".5" opacity=".4"/>
+  <line x1="210" y1="40" x2="228" y2="40" stroke="${T}" stroke-width=".5" opacity=".4"/>
+  <line x1="210" y1="46" x2="228" y2="46" stroke="${T}" stroke-width=".5" opacity=".4"/>
+</svg>`,
+
+mx204:`<svg class="dsvg" viewBox="0 0 250 75" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="8" width="238" height="57" rx="4" fill="${DK}" stroke="${T}" stroke-width="1.5"/>
+  <rect x="10" y="12" width="230" height="49" rx="2" fill="${N}"/>
+  <rect x="1" y="13" width="7" height="47" rx="2" fill="${D}"/>
+  <rect x="242" y="13" width="7" height="47" rx="2" fill="${D}"/>
+  <circle cx="20" cy="21" r="3" fill="#22C55E"/><circle cx="30" cy="21" r="3" fill="${T}"/>
+  <text x="42" y="25" font-size="7.5" fill="${T}" font-family="monospace" font-weight="bold">JUNIPER MX204</text>
+  <!-- 100GE x4 -->
+  ${[0,1,2,3].map(i=>`<rect x="${14+i*19}" y="32" width="15" height="13" rx="2" fill="${i<2?T:D}" opacity="${i<2?.8:.4}" stroke="${T}" stroke-width=".8"/>`).join('')}
+  <text x="52" y="54" font-size="5.5" fill="${D}" font-family="monospace" text-anchor="middle">4x 100GE</text>
+  <!-- 10GE SFP+ x8 -->
+  ${[0,1,2,3].map(i=>`<rect x="${96+i*15}" y="32" width="11" height="6" rx="1" fill="${i<2?T:D}" opacity="${i<2?.7:.3}"/>`).join('')}
+  ${[0,1,2,3].map(i=>`<rect x="${96+i*15}" y="40" width="11" height="6" rx="1" fill="${i<1?T:D}" opacity="${i<1?.7:.3}"/>`).join('')}
+  <text x="118" y="54" font-size="5.5" fill="${D}" font-family="monospace" text-anchor="middle">8x 10GE</text>
+  <!-- PSU -->
+  <rect x="164" y="29" width="20" height="25" rx="2" fill="${D}" stroke="${T}" stroke-width=".7"/>
+  <text x="174" y="42" font-size="5.5" fill="${T}" font-family="monospace" text-anchor="middle">PSU1</text>
+  <rect x="188" y="29" width="20" height="25" rx="2" fill="${D}" stroke="${T}" stroke-width=".7"/>
+  <text x="198" y="42" font-size="5.5" fill="${T}" font-family="monospace" text-anchor="middle">PSU2</text>
+  <!-- FAN -->
+  <rect x="212" y="29" width="18" height="25" rx="2" fill="${DK}" stroke="${D}" stroke-width=".6"/>
+  ${[0,1,2,3].map(i=>`<line x1="214" y1="${35+i*5}" x2="228" y2="${35+i*5}" stroke="${T}" stroke-width=".4" opacity=".4"/>`).join('')}
+</svg>`,
+
+mx480:`<svg class="dsvg" viewBox="0 0 250 145" xmlns="http://www.w3.org/2000/svg">
+  <!-- Chassis outer -->
+  <rect x="4" y="4" width="242" height="137" rx="5" fill="${DK}" stroke="${T}" stroke-width="1.5"/>
+  <rect x="8" y="8" width="234" height="129" rx="3" fill="${N}"/>
+  <!-- Top ear brackets -->
+  <rect x="0" y="8" width="6" height="129" rx="2" fill="${D}"/>
+  <rect x="244" y="8" width="6" height="129" rx="2" fill="${D}"/>
+
+  <!-- Label + LEDs -->
+  <text x="16" y="21" font-size="7.5" fill="${T}" font-family="monospace" font-weight="bold">JUNIPER MX480</text>
+  <circle cx="195" cy="17" r="3" fill="#22C55E"/><circle cx="205" cy="17" r="3" fill="${T}"/>
+
+  <!-- RE-0 horizontal -->
+  <rect x="12" y="27" width="110" height="14" rx="2" fill="${D}" stroke="${T}" stroke-width="1"/>
+  <text x="16" y="37.5" font-size="6.5" fill="${T}" font-family="monospace">RE-0  Routing Engine</text>
+
+  <!-- RE-1 horizontal -->
+  <rect x="128" y="27" width="110" height="14" rx="2" fill="${D}" stroke="${T}" stroke-width="1"/>
+  <text x="132" y="37.5" font-size="6.5" fill="${T}" font-family="monospace">RE-1  Routing Engine</text>
+
+  <!-- SCB bar -->
+  <rect x="12" y="47" width="226" height="12" rx="2" fill="${D}" stroke="${T}" stroke-width=".8"/>
+  <text x="16" y="56.5" font-size="6.5" fill="${T}" font-family="monospace">SCB  Switch Control Board</text>
+
+  <!-- FPC slots 0-5 horizontal -->
+  ${[0,1,2,3,4,5].map((i)=>`
+  <rect x="12" y="${65+i*13}" width="${i<2?180:226}" height="11" rx="2"
+    fill="${i<2?T:DK}" opacity="${i<2?.13:.06}"
+    stroke="${i<2?T:D}" stroke-width="${i<2?.9:.6}"/>
+  <text x="16" y="${73.5+i*13}" font-size="6" fill="${i<2?T:D}" font-family="monospace">FPC${i}${i<2?'  Line Card  ●':''}</text>
+  ${i>=2?`<text x="180" y="${73.5+i*13}" font-size="5.5" fill="${D}" font-family="monospace">empty</text>`:''}`).join('')}
+
+  <!-- PSU bar bottom -->
+  <rect x="12" y="147" width="110" height="11" rx="2" fill="${D}" stroke="${T}" stroke-width=".7"/>
+  <text x="16" y="156" font-size="6.5" fill="${T}" font-family="monospace">PSU-0  DC 1600W</text>
+  <rect x="128" y="147" width="110" height="11" rx="2" fill="${D}" stroke="${T}" stroke-width=".7"/>
+  <text x="132" y="156" font-size="6.5" fill="${T}" font-family="monospace">PSU-1  DC 1600W</text>
+</svg>`,
+
+mx960:`<svg class="dsvg" viewBox="0 0 250 195" xmlns="http://www.w3.org/2000/svg">
+  <!-- Chassis outer -->
+  <rect x="4" y="4" width="242" height="187" rx="5" fill="${DK}" stroke="${T}" stroke-width="1.5"/>
+  <rect x="8" y="8" width="234" height="179" rx="3" fill="${N}"/>
+  <rect x="0" y="8" width="6" height="179" rx="2" fill="${D}"/>
+  <rect x="244" y="8" width="6" height="179" rx="2" fill="${D}"/>
+
+  <!-- Label + LEDs -->
+  <text x="16" y="21" font-size="7.5" fill="${T}" font-family="monospace" font-weight="bold">JUNIPER MX960</text>
+  <circle cx="205" cy="17" r="3" fill="#22C55E"/><circle cx="215" cy="17" r="3" fill="${T}"/>
+
+  <!-- SCB-0 horizontal -->
+  <rect x="12" y="27" width="110" height="14" rx="2" fill="${D}" stroke="${T}" stroke-width="1"/>
+  <text x="16" y="37.5" font-size="6.5" fill="${T}" font-family="monospace">SCB-0  Switch Control</text>
+
+  <!-- SCB-1 horizontal -->
+  <rect x="128" y="27" width="110" height="14" rx="2" fill="${D}" stroke="${T}" stroke-width="1"/>
+  <text x="132" y="37.5" font-size="6.5" fill="${T}" font-family="monospace">SCB-1  Switch Control</text>
+
+  <!-- SFB/Clock bar -->
+  <rect x="12" y="47" width="226" height="10" rx="2" fill="${D}" stroke="${T}" stroke-width=".7" opacity=".7"/>
+  <text x="16" y="55" font-size="5.5" fill="${T}" font-family="monospace" opacity=".8">SFB  Switch Fabric Board</text>
+
+  <!-- FPC slots 0-10 horizontal -->
+  ${Array.from({length:11},(_,i)=>`
+  <rect x="12" y="${63+i*12}" width="${i<4?200:226}" height="10" rx="2"
+    fill="${i<4?T:DK}" opacity="${i<4?.13:.05}"
+    stroke="${i<4?T:D}" stroke-width="${i<4?.9:.5}"/>
+  <text x="16" y="${71+i*12}" font-size="6" fill="${i<4?T:D}" font-family="monospace">FPC${i}  ${i<4?'●  MPC Line Card':''}</text>
+  ${i>=4?`<text x="196" y="${71+i*12}" font-size="5.5" fill="${D}" font-family="monospace">—</text>`:''}`).join('')}
+
+  <!-- PSU left -->
+  <rect x="12" y="200" width="108" height="11" rx="2" fill="${D}" stroke="${T}" stroke-width=".7"/>
+  <text x="16" y="209" font-size="6.5" fill="${T}" font-family="monospace">PSU-0  DC</text>
+  <!-- PSU right -->
+  <rect x="128" y="200" width="110" height="11" rx="2" fill="${D}" stroke="${T}" stroke-width=".7"/>
+  <text x="132" y="209" font-size="6.5" fill="${T}" font-family="monospace">PSU-1  DC</text>
+  <!-- Fan tray -->
+  <rect x="12" y="187" width="226" height="9" rx="2" fill="${DK}" stroke="${D}" stroke-width=".6"/>
+  ${Array.from({length:8},(_,i)=>`<line x1="${18+i*26}" y1="189" x2="${18+i*26}" y2="194" stroke="${T}" stroke-width="1.5" opacity=".4"/>`).join('')}
+  <text x="16" y="195" font-size="5" fill="${D}" font-family="monospace" opacity=".7">FAN TRAY ▷▷▷▷▷▷▷▷</text>
+</svg>`,
+
+ptx3000:`<svg class="dsvg" viewBox="0 0 250 175" xmlns="http://www.w3.org/2000/svg">
+  <!-- Chassis outer -->
+  <rect x="4" y="4" width="242" height="167" rx="5" fill="#1A0A2E" stroke="#8B5CF6" stroke-width="1.5"/>
+  <rect x="8" y="8" width="234" height="159" rx="3" fill="#1E1040"/>
+  <rect x="0" y="8" width="6" height="159" rx="2" fill="${D}"/>
+  <rect x="244" y="8" width="6" height="159" rx="2" fill="${D}"/>
+
+  <!-- Label + LED -->
+  <text x="16" y="21" font-size="7.5" fill="#A78BFA" font-family="monospace" font-weight="bold">JUNIPER PTX3000</text>
+  <circle cx="210" cy="17" r="3" fill="#8B5CF6" opacity=".9"/>
+
+  <!-- RE-DUO bar -->
+  <rect x="12" y="27" width="226" height="13" rx="2" fill="#2D1B69" stroke="#8B5CF6" stroke-width="1"/>
+  <text x="16" y="37" font-size="6.5" fill="#A78BFA" font-family="monospace">RE-DUO  Dual Core 2.6GHz Routing Engine</text>
+
+  <!-- CB-0 -->
+  <rect x="12" y="46" width="110" height="12" rx="2" fill="#2D1B69" stroke="#8B5CF6" stroke-width="1"/>
+  <text x="16" y="55.5" font-size="6.5" fill="#A78BFA" font-family="monospace">CB-0  Control Board</text>
+  <!-- CB-1 -->
+  <rect x="128" y="46" width="110" height="12" rx="2" fill="#2D1B69" stroke="#8B5CF6" stroke-width="1"/>
+  <text x="132" y="55.5" font-size="6.5" fill="#A78BFA" font-family="monospace">CB-1  Control Board</text>
+
+  <!-- SIB x9 horizontal -->
+  ${Array.from({length:9},(_,i)=>`
+  <rect x="12" y="${64+i*11}" width="226" height="9" rx="2"
+    fill="#8B5CF6" opacity="${i<9?.16:.05}"
+    stroke="#8B5CF6" stroke-width=".8"/>
+  <text x="16" y="${71.5+i*11}" font-size="6" fill="#A78BFA" font-family="monospace">SIB-${i}  Switch Interface Board</text>`).join('')}
+
+  <!-- FPC-0 -->
+  <rect x="12" y="163" width="110" height="11" rx="2" fill="#8B5CF6" opacity=".13" stroke="#8B5CF6" stroke-width=".9"/>
+  <text x="16" y="171.5" font-size="6" fill="#A78BFA" font-family="monospace">FPC-0  ●  1T Forwarding Card</text>
+  <!-- FPC-1 -->
+  <rect x="128" y="163" width="110" height="11" rx="2" fill="#8B5CF6" opacity=".13" stroke="#8B5CF6" stroke-width=".9"/>
+  <text x="132" y="171.5" font-size="6" fill="#A78BFA" font-family="monospace">FPC-1  ●  1T Forwarding Card</text>
+</svg>`,
+
+ptx10001:`<svg class="dsvg" viewBox="0 0 250 75" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="8" width="238" height="57" rx="4" fill="#1A0A2E" stroke="#8B5CF6" stroke-width="1.5"/>
+  <rect x="10" y="12" width="230" height="49" rx="2" fill="#1E1040"/>
+  <rect x="1" y="13" width="7" height="47" rx="2" fill="${D}"/>
+  <rect x="242" y="13" width="7" height="47" rx="2" fill="${D}"/>
+  <text x="14" y="25" font-size="7" fill="#A78BFA" font-family="monospace" font-weight="bold">JUNIPER PTX10001-36MR</text>
+  <circle cx="225" cy="21" r="3" fill="#8B5CF6" opacity=".9"/>
+  <!-- QSFP56-DD 3 rows x 12 -->
+  ${Array.from({length:12},(_,i)=>`
+    <rect x="${14+i*17}" y="32" width="13" height="7" rx="1" fill="${i<6?'#8B5CF6':'#2D1B69'}" opacity="${i<6?.7:.3}" stroke="#8B5CF6" stroke-width=".5"/>
+    <rect x="${14+i*17}" y="42" width="13" height="7" rx="1" fill="${i<4?'#A78BFA':'#2D1B69'}" opacity="${i<4?.6:.2}" stroke="#8B5CF6" stroke-width=".5"/>
+    <rect x="${14+i*17}" y="52" width="13" height="7" rx="1" fill="#2D1B69" opacity=".15" stroke="#4C1D95" stroke-width=".4"/>
+  `).join('')}
+  <!-- PSU -->
+  <rect x="222" y="29" width="14" height="33" rx="2" fill="#2D1B69" stroke="#8B5CF6" stroke-width=".8"/>
+  <text x="229" y="47" font-size="5" fill="#A78BFA" font-family="monospace" text-anchor="middle" transform="rotate(-90,229,47)">PSU DC</text>
+</svg>`,
+
+ex2300:`<svg class="dsvg" viewBox="0 0 250 65" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="6" width="238" height="52" rx="3" fill="#0A1F0F" stroke="#16A34A" stroke-width="1.5"/>
+  <rect x="10" y="10" width="230" height="44" rx="2" fill="#0F2A18"/>
+  <rect x="1" y="11" width="7" height="42" rx="2" fill="${D}"/>
+  <rect x="242" y="11" width="7" height="42" rx="2" fill="${D}"/>
+  <text x="14" y="23" font-size="7.5" fill="#4ADE80" font-family="monospace" font-weight="bold">JUNIPER EX2300-24T</text>
+  <circle cx="204" cy="19" r="3" fill="#22C55E"/><circle cx="215" cy="19" r="3" fill="#16A34A" opacity=".6"/>
+  <!-- 24 GE ports row 1 -->
+  ${Array.from({length:12},(_,i)=>`<rect x="${14+i*15}" y="30" width="11" height="8" rx="1" fill="${i<8?'#16A34A':'#0F3320'}" opacity="${i<8?.7:.4}" stroke="#16A34A" stroke-width=".5"/>`).join('')}
+  <!-- row 2 -->
+  ${Array.from({length:12},(_,i)=>`<rect x="${14+i*15}" y="41" width="11" height="8" rx="1" fill="${i<6?'#22C55E':'#0F3320'}" opacity="${i<6?.6:.3}" stroke="#16A34A" stroke-width=".5"/>`).join('')}
+  <!-- SFP+ uplink x4 -->
+  <rect x="200" y="30" width="11" height="8" rx="1" fill="#4ADE80" opacity=".9" stroke="#4ADE80" stroke-width=".8"/>
+  <rect x="215" y="30" width="11" height="8" rx="1" fill="#4ADE80" opacity=".9" stroke="#4ADE80" stroke-width=".8"/>
+  <rect x="200" y="41" width="11" height="8" rx="1" fill="#0F3320" opacity=".4" stroke="#16A34A" stroke-width=".5"/>
+  <rect x="215" y="41" width="11" height="8" rx="1" fill="#0F3320" opacity=".4" stroke="#16A34A" stroke-width=".5"/>
+  <text x="210" y="56" font-size="6" fill="#4ADE80" font-family="monospace" text-anchor="middle">SFP+</text>
+</svg>`,
+// ─── HUAWEI SVGs ────────────────────────────────────────────────────────
+osn3500:`<svg class="dsvg" viewBox="0 0 250 110" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="5" width="238" height="100" rx="4" fill="#1A0805" stroke="#EF4444" stroke-width="1.5"/>
+  <rect x="10" y="9" width="230" height="92" rx="2" fill="#2D0F0A"/>
+  <rect x="1" y="9" width="7" height="92" rx="2" fill="${D}"/>
+  <rect x="242" y="9" width="7" height="92" rx="2" fill="${D}"/>
+  <text x="14" y="22" font-size="7.5" fill="#FCA5A5" font-family="monospace" font-weight="bold">HUAWEI OSN3500</text>
+  <text x="14" y="32" font-size="6" fill="#EF4444" font-family="monospace">OptiX SDH Transmission</text>
+  <circle cx="210" cy="18" r="3" fill="#EF4444" opacity=".9"/>
+  <!-- Subrack slots -->
+  ${Array.from({length:10},(_,i)=>`<rect x="${14+i*21}" y="40" width="19" height="55" rx="1" fill="${i<4?'#EF4444':'#1A0805'}" opacity="${i<4?.15:.06}" stroke="${i<4?'#EF4444':'#5A1010'}" stroke-width=".8"/>
+  <text x="${23+i*21}" y="70" font-size="5" fill="${i<4?'#FCA5A5':'#5A1010'}" font-family="monospace" text-anchor="middle" transform="rotate(-90,${23+i*21},70)">SLOT${i}</text>`).join('')}
+  <!-- PIU -->
+  <rect x="228" y="40" width="14" height="26" rx="2" fill="#3D1010" stroke="#EF4444" stroke-width=".7"/>
+  <text x="235" y="53" font-size="5.5" fill="#FCA5A5" font-family="monospace" text-anchor="middle">PIU</text>
+  <rect x="228" y="69" width="14" height="26" rx="2" fill="#1A0805" stroke="#5A1010" stroke-width=".6"/>
+  ${[0,1,2].map(i=>`<line x1="230" y1="${75+i*6}" x2="240" y2="${75+i*6}" stroke="#EF4444" stroke-width=".4" opacity=".3"/>`).join('')}
+</svg>`,
+
+osn7500:`<svg class="dsvg" viewBox="0 0 250 150" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="5" width="238" height="140" rx="4" fill="#1A0805" stroke="#EF4444" stroke-width="1.5"/>
+  <rect x="10" y="9" width="230" height="132" rx="2" fill="#2D0F0A"/>
+  <rect x="1" y="9" width="7" height="132" rx="2" fill="${D}"/>
+  <rect x="242" y="9" width="7" height="132" rx="2" fill="${D}"/>
+  <text x="14" y="22" font-size="7.5" fill="#FCA5A5" font-family="monospace" font-weight="bold">HUAWEI OSN7500</text>
+  <text x="14" y="32" font-size="6" fill="#EF4444" font-family="monospace">OptiX SDH High-Capacity</text>
+  <circle cx="210" cy="18" r="3" fill="#EF4444" opacity=".9"/>
+  <!-- Subrack slots 12 -->
+  ${Array.from({length:10},(_,i)=>`<rect x="${14+i*21}" y="40" width="19" height="90" rx="1" fill="${i<5?'#EF4444':'#1A0805'}" opacity="${i<5?.15:.06}" stroke="${i<5?'#EF4444':'#5A1010'}" stroke-width=".8"/>
+  <text x="${23+i*21}" y="88" font-size="5" fill="${i<5?'#FCA5A5':'#5A1010'}" font-family="monospace" text-anchor="middle" transform="rotate(-90,${23+i*21},88)">S${i}</text>`).join('')}
+  <!-- XCS & PIU -->
+  <rect x="228" y="40" width="14" height="44" rx="2" fill="#3D1010" stroke="#EF4444" stroke-width=".7"/>
+  <text x="235" y="63" font-size="5.5" fill="#FCA5A5" font-family="monospace" text-anchor="middle" transform="rotate(-90,235,63)">XCS</text>
+  <rect x="228" y="88" width="14" height="42" rx="2" fill="#3D1010" stroke="#EF4444" stroke-width=".7"/>
+  <text x="235" y="110" font-size="5.5" fill="#FCA5A5" font-family="monospace" text-anchor="middle" transform="rotate(-90,235,110)">PIU</text>
+  <!-- Fan bottom -->
+  <rect x="10" y="135" width="218" height="6" rx="1" fill="#1A0805" stroke="#5A1010" stroke-width=".5"/>
+</svg>`,
+
+osn1500:`<svg class="dsvg" viewBox="0 0 250 75" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="8" width="238" height="57" rx="4" fill="#1A0805" stroke="#EF4444" stroke-width="1.5"/>
+  <rect x="10" y="12" width="230" height="49" rx="2" fill="#2D0F0A"/>
+  <rect x="1" y="13" width="7" height="47" rx="2" fill="${D}"/>
+  <rect x="242" y="13" width="7" height="47" rx="2" fill="${D}"/>
+  <circle cx="22" cy="21" r="3" fill="#EF4444"/><circle cx="32" cy="21" r="3" fill="#FCA5A5" opacity=".5"/>
+  <text x="44" y="25" font-size="7.5" fill="#FCA5A5" font-family="monospace" font-weight="bold">HUAWEI OSN1500</text>
+  <!-- Slots x6 -->
+  ${Array.from({length:6},(_,i)=>`<rect x="${14+i*32}" y="32" width="30" height="22" rx="2" fill="${i<3?'#EF4444':'#1A0805'}" opacity="${i<3?.15:.06}" stroke="${i<3?'#EF4444':'#5A1010'}" stroke-width=".8"/>
+  <text x="${29+i*32}" y="47" font-size="6" fill="${i<3?'#FCA5A5':'#5A1010'}" font-family="monospace" text-anchor="middle">SL${i+1}</text>`).join('')}
+  <!-- PIU -->
+  <rect x="214" y="32" width="14" height="22" rx="2" fill="#3D1010" stroke="#EF4444" stroke-width=".7"/>
+  <text x="221" y="44" font-size="5.5" fill="#FCA5A5" font-family="monospace" text-anchor="middle">PIU</text>
+</svg>`,
+
+osn9800:`<svg class="dsvg" viewBox="0 0 250 150" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="5" width="238" height="140" rx="4" fill="#0F0A20" stroke="#F97316" stroke-width="1.5"/>
+  <rect x="10" y="9" width="230" height="132" rx="2" fill="#1A1030"/>
+  <rect x="1" y="9" width="7" height="132" rx="2" fill="${D}"/>
+  <rect x="242" y="9" width="7" height="132" rx="2" fill="${D}"/>
+  <text x="14" y="22" font-size="7.5" fill="#FDBA74" font-family="monospace" font-weight="bold">HUAWEI OSN9800</text>
+  <text x="14" y="32" font-size="6" fill="#F97316" font-family="monospace">OptiX DWDM Platform</text>
+  <circle cx="210" cy="18" r="3" fill="#F97316" opacity=".9"/>
+  <!-- Line cards -->
+  ${Array.from({length:8},(_,i)=>`<rect x="${14+i*26}" y="40" width="24" height="90" rx="1" fill="${i<4?'#F97316':'#0F0A20'}" opacity="${i<4?.15:.05}" stroke="${i<4?'#F97316':'#3A2010'}" stroke-width=".8"/>
+  <text x="${26+i*26}" y="88" font-size="5" fill="${i<4?'#FDBA74':'#3A2010'}" font-family="monospace" text-anchor="middle" transform="rotate(-90,${26+i*26},88)">OTU${i+1}</text>`).join('')}
+  <!-- SCC + PIU -->
+  <rect x="226" y="40" width="16" height="44" rx="2" fill="#2A1A10" stroke="#F97316" stroke-width=".7"/>
+  <text x="234" y="63" font-size="5.5" fill="#FDBA74" font-family="monospace" text-anchor="middle" transform="rotate(-90,234,63)">SCC</text>
+  <rect x="226" y="88" width="16" height="42" rx="2" fill="#2A1A10" stroke="#F97316" stroke-width=".7"/>
+  <text x="234" y="110" font-size="5.5" fill="#FDBA74" font-family="monospace" text-anchor="middle" transform="rotate(-90,234,110)">PIU</text>
+  <rect x="10" y="135" width="218" height="6" rx="1" fill="#0F0A20" stroke="#3A2010" stroke-width=".5"/>
+</svg>`,
+
+osn1800:`<svg class="dsvg" viewBox="0 0 250 75" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="8" width="238" height="57" rx="4" fill="#0F0A20" stroke="#F97316" stroke-width="1.5"/>
+  <rect x="10" y="12" width="230" height="49" rx="2" fill="#1A1030"/>
+  <rect x="1" y="13" width="7" height="47" rx="2" fill="${D}"/>
+  <rect x="242" y="13" width="7" height="47" rx="2" fill="${D}"/>
+  <circle cx="22" cy="21" r="3" fill="#F97316"/><circle cx="32" cy="21" r="3" fill="#FDBA74" opacity=".5"/>
+  <text x="44" y="25" font-size="7.5" fill="#FDBA74" font-family="monospace" font-weight="bold">HUAWEI OSN1800</text>
+  <!-- MR cards row 1 -->
+  ${Array.from({length:8},(_,i)=>`<rect x="${14+i*26}" y="32" width="22" height="10" rx="1" fill="${i<5?'#F97316':'#0F0A20'}" opacity="${i<5?.7:.2}" stroke="#F97316" stroke-width=".5"/>`).join('')}
+  <!-- MR cards row 2 -->
+  ${Array.from({length:8},(_,i)=>`<rect x="${14+i*26}" y="45" width="22" height="10" rx="1" fill="${i<3?'#FDBA74':'#0F0A20'}" opacity="${i<3?.6:.15}" stroke="#F97316" stroke-width=".5"/>`).join('')}
+  <text x="125" y="62" font-size="6" fill="#F97316" font-family="monospace" text-anchor="middle">WDM Line/Trib Cards</text>
+</svg>`,
+
+dc908:`<svg class="dsvg" viewBox="0 0 250 75" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="8" width="238" height="57" rx="4" fill="#0F0A20" stroke="#F97316" stroke-width="1.5"/>
+  <rect x="10" y="12" width="230" height="49" rx="2" fill="#1A1030"/>
+  <rect x="1" y="13" width="7" height="47" rx="2" fill="${D}"/>
+  <rect x="242" y="13" width="7" height="47" rx="2" fill="${D}"/>
+  <circle cx="22" cy="21" r="3" fill="#F97316"/>
+  <text x="34" y="25" font-size="7.5" fill="#FDBA74" font-family="monospace" font-weight="bold">HUAWEI DC908 DWDM</text>
+  <text x="34" y="34" font-size="6" fill="#F97316" font-family="monospace">Fiber Distribution Frame</text>
+  <!-- ODF ports -->
+  ${Array.from({length:12},(_,i)=>`<rect x="${14+i*18}" y="40" width="14" height="14" rx="1" fill="${i<8?'#F97316':'#0F0A20'}" opacity="${i<8?.6:.2}" stroke="#F97316" stroke-width=".5"/>
+  <circle cx="${21+i*18}" cy="47" r="3" fill="${i<8?'#FDBA74':'#1A1030'}" opacity="${i<8?.7:.3}"/>`).join('')}
+  <text x="125" y="62" font-size="6" fill="#F97316" font-family="monospace" text-anchor="middle">ODF / Patch Panel</text>
+</svg>`
+  };
+  return svgs[id]||'';
+}
+
+// ═══ HELPERS ════════════════════════════════════════════════════════════
+function sClass(item){
+  if(!item.f) return 'x';
+  if(item.t===0) return 'r';
+  if(item.t<=5) return 'o';
+  return 'g';
+}
+function cardSt(dev){
+  const out=dev.items.filter(i=>i.f&&i.t===0).length;
+  const low=dev.items.filter(i=>i.f&&i.t>0&&i.t<=5).length;
+  if(out>0) return {cls:'st-out',label:'OUT OF STOCK'};
+  if(low>0) return {cls:'st-low',label:'LOW STOCK'};
+  return {cls:'st-ok',label:'IN STOCK'};
+}
+
+// ═══ RENDER ══════════════════════════════════════════════════════════════
+function render(){
+  const grid=document.getElementById('dev-grid');
+  grid.innerHTML=renderDeviceCards(DEVICES);
+}
+
+function renderHW(){
+  const grid=document.getElementById('hw-grid');
+  grid.innerHTML=renderDeviceCards(DEVICES_HW);
+}
+
+function renderDeviceCards(devList){
+  return devList.map(dev=>{
+    const foundItems=dev.items.filter(i=>i.f);
+    const locs={};
+    foundItems.forEach(i=>Object.entries(i.loc||{}).forEach(([k,v])=>{locs[k]=(locs[k]||0)+v;}));
+    const topLocs=Object.entries(locs).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const st=cardSt(dev);
+    const preview=dev.items.slice(0,4);
+    const matchCount=dev.items.filter(i=>i.f).length;
+
+    return `<div class="dc">
+      <div class="di">
+        <div class="d-series ${dev.sc}">${dev.series} SERIES</div>
+        <div class="d-stbadge ${st.cls}">${st.label}</div>
+        ${SVG(dev.id)}
+        <div class="d-model">${dev.model}</div>
+        <div class="d-sub">${dev.desc}</div>
+      </div>
+      <div class="db">
+        <div class="d-meta-row">
+          <span class="d-match-label">${matchCount}/${dev.items.length} parts matched</span>
+          <div class="lchips">${topLocs.map(([k,v])=>`<div class="lchip">${k}<b>${v}</b></div>`).join('')}</div>
+        </div>
+        <div class="plist">
+          ${preview.map(item=>{
+            const c=sClass(item);
+            return `<div class="prow">
+              <div class="pdot ${c}"></div>
+              <div class="pinfo">
+                <div class="pname" title="${item.d}">${item.d}</div>
+                <div class="pmat">${item.m}</div>
+              </div>
+              ${item.f?`<div class="pqty ${c}">${item.t}</div>`:`<div class="pnf">not in DB</div>`}
+            </div>`;
+          }).join('')}
+        </div>
+        <button class="see-btn" onclick="openDM('${dev.id}')">ดูทั้งหมด ${dev.items.length} Part →</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderStats(){
+  const all=[...DEVICES,...DEVICES_HW].flatMap(d=>d.items);
+  const found=all.filter(i=>i.f);
+  document.getElementById('s1').textContent=DEVICES.length+DEVICES_HW.length;
+  document.getElementById('s2').textContent=all.length;
+  document.getElementById('s3').textContent=found.length;
+  document.getElementById('s4').textContent=found.filter(i=>i.t>0&&i.t<=5).length;
+  document.getElementById('s5').textContent=all.filter(i=>!i.f||i.t===0).length;
+}
+
+// ═══ DEVICE MODAL ════════════════════════════════════════════════════════
+function openDM(devId){
+  const dev=[...DEVICES,...DEVICES_HW].find(d=>d.id===devId); if(!dev) return;
+  const locs={};
+  dev.items.filter(i=>i.f).forEach(i=>Object.entries(i.loc||{}).forEach(([k,v])=>{locs[k]=(locs[k]||0)+v;}));
+  const total=dev.items.filter(i=>i.f).reduce((s,i)=>s+i.t,0);
+  document.getElementById('dm-t').textContent=`Juniper ${dev.model} — Stock ทั้งหมด`;
+  document.getElementById('dm-b').innerHTML=`
+    <div class="msub">Stock แยกตามคลัง</div>
+    <div class="mloc-grid">
+      ${Object.entries(locs).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+        <div class="mloc"><div class="mloc-n">${k}</div><div class="mloc-q">${v.toLocaleString()}</div></div>`).join('')}
+      <div class="mloc tot"><div class="mloc-n">TOTAL</div><div class="mloc-q">${total.toLocaleString()}</div></div>
+    </div>
+    <div class="msub">Part Numbers ทั้งหมด — ${dev.items.length} รายการ (match DB ${dev.items.filter(i=>i.f).length})</div>
+    <div class="mparts">
+      ${dev.items.map(item=>{
+        const c=sClass(item);
+        const pct=item.f&&item.mx?Math.min(100,Math.round(item.t/item.mx*100)):0;
+        return `<div class="mp">
+          <div class="mp-dot ${c}"></div>
+          <div>
+            <div class="mp-d">${item.d}</div>
+            <div class="mp-m">${item.m}${!item.f?' · <span style="color:#CBD5E1">ไม่พบใน DB</span>':''}</div>
+          </div>
+          <div class="mp-bar"><div class="mp-fill ${c}" style="width:${pct}%"></div></div>
+          ${item.f?`<div class="mp-q ${c}">${item.t.toLocaleString()}</div>`:`<div class="mp-q x">—</div>`}
+        </div>`;
+      }).join('')}
+    </div>`;
+  document.getElementById('dev-modal').classList.add('open');
+}
+function closeDM(e){if(e.target===document.getElementById('dev-modal'))closeDMd();}
+function closeDMd(){document.getElementById('dev-modal').classList.remove('open');}
+
+// ═══ IMPORT ══════════════════════════════════════════════════════════════
+let pData=null;
+function openImp(){document.getElementById('imp-modal').classList.add('open');resetImp();}
+function closeImp(){document.getElementById('imp-modal').classList.remove('open');pData=null;}
+function resetImp(){
+  setSt('','');
+  document.getElementById('im-prev').style.display='none';
+  document.getElementById('btn-ok').style.display='none';
+  document.getElementById('xls-in').value='';pData=null;
+}
+function setSt(type,msg){
+  const el=document.getElementById('im-st');
+  if(!type){el.style.display='none';return;}
+  el.className='imst '+type;el.textContent=msg;el.style.display='block';
+}
+function handleDrop(e){
+  e.preventDefault();document.getElementById('drop-z').classList.remove('drag');
+  if(e.dataTransfer.files[0])procFile(e.dataTransfer.files[0]);
+}
+function handleFile(e){if(e.target.files[0])procFile(e.target.files[0]);}
+function procFile(file){
+  if(!file.name.match(/\.xlsx?$/i)){setSt('err','❌ ต้องเป็นไฟล์ .xlsx หรือ .xls');return;}
+  setSt('load','⏳ กำลังอ่านไฟล์ '+file.name+' ...');
+  const r=new FileReader();
+  r.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const sn=wb.SheetNames.find(s=>s.toLowerCase().includes('sumstock'))||wb.SheetNames[0];
+      const raw=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null});
+      let hr=-1;
+      for(let i=0;i<Math.min(10,raw.length);i++){
+        if(raw[i]&&raw[i].some(c=>String(c||'').toLowerCase().includes('material'))){hr=i;break;}
+      }
+      if(hr<0){setSt('err','❌ ไม่พบ header "Material"');return;}
+      const hdrs=raw[hr].map(h=>String(h||'').trim());
+      const mi=hdrs.findIndex(h=>h.toLowerCase()==='material');
+      const di=hdrs.findIndex(h=>h.toLowerCase().includes('desc'));
+      const ti=hdrs.findIndex(h=>h.toLowerCase()==='total');
+      const lcs=[];
+      for(let i=mi+2;i<ti;i++) if(hdrs[i])lcs.push({name:hdrs[i],idx:i});
+      const map={};
+      for(let r2=hr+1;r2<raw.length;r2++){
+        const row=raw[r2];if(!row)continue;
+        const mat=String(row[mi]||'').trim();if(!mat||mat==='null')continue;
+        const loc={};lcs.forEach(lc=>{loc[lc.name]=parseFloat(row[lc.idx])||0;});
+        map[mat]={d:String(row[di]||'').trim(),t:parseFloat(row[ti])||0,loc,f:1};
+      }
+      let matched=0,notfound=[];
+      const upd=DEVICES.map(dev=>({...dev,items:dev.items.map(item=>{
+        if(map[item.m]){matched++;return {...item,d:map[item.m].d||item.d,t:map[item.m].t,loc:map[item.m].loc,f:1};}
+        else{notfound.push(item.m);return {...item,f:0};}
+      })}));
+      pData={devices:upd,map,fileName:file.name,matched,notfound,total:Object.keys(map).length};
+      const rows=upd.flatMap(d=>d.items).filter(i=>i.f).slice(0,5);
+      const prev=document.getElementById('im-prev');
+      prev.innerHTML=`<div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--dim);text-transform:uppercase;margin-bottom:5px">Preview — match ${matched} จาก ${Object.keys(map).length} รายการ</div>
+      <table><tr><th>Material</th><th>Description</th><th>Total</th></tr>
+      ${rows.map(i=>`<tr><td style="font-family:monospace;color:var(--teal2)">${i.m}</td><td>${i.d}</td><td style="font-weight:700;color:var(--green)">${i.t}</td></tr>`).join('')}
+      </table>${notfound.length?`<div style="margin-top:5px;font-size:10px;color:var(--orange)">⚠ ไม่พบ: ${notfound.slice(0,5).join(', ')}${notfound.length>5?'...':''}</div>`:''}`;
+      prev.style.display='block';
+      setSt('ok',`✅ พบ ${Object.keys(map).length} Part — match ${matched} รายการ`);
+      document.getElementById('btn-ok').style.display='block';
+    }catch(err){setSt('err','❌ '+err.message);}
+  };
+  r.readAsArrayBuffer(file);
+}
+function applyImp(){
+  if(!pData)return;
+  pData.devices.forEach((d,i)=>{DEVICES[i].items=d.items;});
+  // also match HW devices from import
+  DEVICES_HW.forEach(dev=>{
+    dev.items=dev.items.map(item=>{
+      const found=pData.map[item.m];
+      if(found){return {...item,d:found.d||item.d,t:found.t,loc:found.loc,f:1};}
+      return item;
+    });
+  });
+  document.getElementById('hdr-ts').textContent='Data: '+new Date().toLocaleDateString('th-TH');
+  render();renderHW();renderStats();closeImp();
+  const t=document.createElement('div');
+  t.className='toast';t.textContent='✓ อัปเดต Dashboard สำเร็จ!';
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),400);},3000);
+}
+
+// ═══ CLOCK ═══════════════════════════════════════════════════════════════
+function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('th-TH');}
+render();renderHW();renderStats();tick();setInterval(tick,1000);
+</script>
+</body>
+</html>
